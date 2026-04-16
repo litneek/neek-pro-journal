@@ -1,9 +1,9 @@
-doctype html>
+<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Neek Trading Journal Pro - V2.2</title>
+<title>NEEK TRADING JOURNAL PRO - V6.1</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
     :root {
@@ -49,7 +49,6 @@ doctype html>
 
     .stat-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--color-border); font-size: 14px; }
     
-    /* Highlighted Class for Home Stats */
     .stat-highlight { 
         color: var(--color-stat-highlight); 
         font-weight: 800; 
@@ -75,18 +74,25 @@ doctype html>
     td { padding: 12px 10px; border-bottom: 1px solid var(--color-border); font-size: 13px; }
     .p-pos { color: var(--color-success); font-weight: bold; }
     .p-neg { color: var(--color-danger); font-weight: bold; }
+
+    /* Edge Styles */
+    #edge-topic { font-size: 20px; font-weight: 800; color: var(--color-accent); border: none; border-bottom: 2px solid var(--color-accent); background: transparent; margin-bottom: 10px; }
+    #edge-notes { font-size: 14px; color: var(--color-text-muted); min-height: 200px; border: 1px solid var(--color-border); background: var(--color-bg-primary); padding: 15px; }
+    .edge-list-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid var(--color-border); }
+    .edge-list-item a { color: var(--color-accent); text-decoration: none; font-size: 13px; }
 </style>
 </head>
 <body>
 
 <header>
-    <h1>Neek Journal</h1>
+    <h1>FAIL BUT NEVER QUIT </h1>
     <div class="header-actions">
         <nav id="mainNav">
             <button onclick="showPage('home')" id="nav-home" class="active">Home</button>
             <button onclick="showPage('journal')" id="nav-journal">Journal</button>
             <button onclick="showPage('dashboard')" id="nav-dashboard">Analysis</button>
             <button onclick="showPage('gallery')" id="nav-gallery">Gallery</button>
+            <button onclick="showPage('edge')" id="nav-edge">Edge</button>
         </nav>
         <button class="theme-toggle" onclick="toggleTheme()">CONTRAST</button>
     </div>
@@ -127,11 +133,12 @@ doctype html>
                     <div><label>Date</label><input type="datetime-local" id="tDate"></div>
                     <div><label>Pair</label>
                         <select id="tPair" onchange="runCalc()">
-                            <option value="EURUSD">EUR/USD</option>
-                            <option value="GBPUSD">GBP/USD</option>
+                            <option value="NQ">NASDAQ</option>
+                            <option value="ES">S&P500</option>
                             <option value="XAUUSD">XAU/USD (Gold)</option>
                             <option value="XAGUSD">XAG/USD (Silver)</option>
                             <option value="US30">US30 (Dow Jones)</option>
+                            <option value="BTC">BTCUSD (BITCOIN)</option>
                         </select>
                     </div>
                 </div>
@@ -204,11 +211,44 @@ doctype html>
         <h2>Visual Library</h2>
         <div id="galleryGrid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap:15px;"></div>
     </section>
+
+    <section id="edge">
+        <div class="grid journal-layout">
+            <div class="card">
+                <h3>Strategy Notes</h3>
+                <input type="text" id="edge-topic" placeholder="MY STRATEGY or RULES" oninput="saveEdgeText()">
+                <textarea id="edge-notes" placeholder="Detailed notes go here..." oninput="saveEdgeText()"></textarea>
+            </div>
+            <div class="card">
+                <h3>Resources & PDF Library</h3>
+                
+                <label>Add Link</label>
+                <div style="display:flex; gap:5px; margin-bottom:15px;">
+                    <input type="text" id="link-input" placeholder="https://..." style="margin-bottom:0">
+                    <button class="btn btn-primary" style="width:auto; padding:0 15px;" onclick="addEdgeLink()">Add</button>
+                </div>
+                <div id="edge-links-list" style="margin-bottom:20px;"></div>
+
+                <hr style="border: 0.5px solid var(--color-border); margin-bottom:15px;">
+                
+                <label>Upload Strategy PDF</label>
+                <input type="file" id="pdf-input" accept=".pdf" style="font-size:11px;">
+                <button class="btn btn-secondary" onclick="saveEdgePDF()" style="width:100%">Archive PDF</button>
+                <div id="edge-pdf-list" style="margin-top:10px;"></div>
+            </div>
+        </div>
+    </section>
 </main>
 
 <script>
     let trades = JSON.parse(localStorage.getItem('neek_v9_trades')) || [];
     let charts = {};
+
+    // IndexedDB setup for PDF storage
+    let db;
+    const dbReq = indexedDB.open("NeekEdgeDB", 1);
+    dbReq.onupgradeneeded = e => e.target.result.createObjectStore("pdfs", { keyPath: "id", autoIncrement: true });
+    dbReq.onsuccess = e => { db = e.target.result; if(document.getElementById('edge').classList.contains('active')) renderEdgeItems(); };
 
     function toggleTheme() {
         document.body.classList.toggle('light-theme');
@@ -226,7 +266,86 @@ doctype html>
         if(id === 'home') updateStats();
         if(id === 'journal') renderTable();
         if(id === 'gallery') renderGallery();
+        if(id === 'edge') { loadEdgeText(); renderEdgeItems(); }
     }
+
+    // --- EDGE LOGIC ---
+    function saveEdgeText() {
+        const edgeData = {
+            topic: document.getElementById('edge-topic').value,
+            notes: document.getElementById('edge-notes').value
+        };
+        localStorage.setItem('neek_edge_txt', JSON.stringify(edgeData));
+    }
+
+    function loadEdgeText() {
+        const data = JSON.parse(localStorage.getItem('neek_edge_txt')) || {topic: '', notes: ''};
+        document.getElementById('edge-topic').value = data.topic;
+        document.getElementById('edge-notes').value = data.notes;
+    }
+
+    function addEdgeLink() {
+        const inp = document.getElementById('link-input');
+        if(!inp.value) return;
+        let links = JSON.parse(localStorage.getItem('neek_edge_links')) || [];
+        links.push(inp.value);
+        localStorage.setItem('neek_edge_links', JSON.stringify(links));
+        inp.value = "";
+        renderEdgeItems();
+    }
+
+    function deleteEdgeLink(idx) {
+        let links = JSON.parse(localStorage.getItem('neek_edge_links')) || [];
+        links.splice(idx, 1);
+        localStorage.setItem('neek_edge_links', JSON.stringify(links));
+        renderEdgeItems();
+    }
+
+    async function saveEdgePDF() {
+        const file = document.getElementById('pdf-input').files[0];
+        if(!file || !db) return;
+        const reader = new FileReader();
+        reader.onload = e => {
+            const tx = db.transaction("pdfs", "readwrite");
+            tx.objectStore("pdfs").add({ name: file.name, data: e.target.result });
+            tx.oncomplete = () => { renderEdgeItems(); document.getElementById('pdf-input').value = ""; };
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function deleteEdgePDF(id) {
+        const tx = db.transaction("pdfs", "readwrite");
+        tx.objectStore("pdfs").delete(id);
+        tx.oncomplete = () => renderEdgeItems();
+    }
+
+    function renderEdgeItems() {
+        // Render Links
+        const links = JSON.parse(localStorage.getItem('neek_edge_links')) || [];
+        const linkCont = document.getElementById('edge-links-list');
+        linkCont.innerHTML = links.map((l, i) => `
+            <div class="edge-list-item">
+                <a href="${l}" target="_blank">${l.length > 30 ? l.substring(0,30)+'...' : l}</a>
+                <button class="btn-del" onclick="deleteEdgeLink(${i})">×</button>
+            </div>
+        `).join('');
+
+        // Render PDFs
+        if(!db) return;
+        const pdfCont = document.getElementById('edge-pdf-list');
+        pdfCont.innerHTML = "";
+        db.transaction("pdfs").objectStore("pdfs").getAll().onsuccess = e => {
+            e.target.result.forEach(pdf => {
+                pdfCont.innerHTML += `
+                    <div class="edge-list-item">
+                        <a href="${pdf.data}" download="${pdf.name}">${pdf.name}</a>
+                        <button class="btn-del" onclick="deleteEdgePDF(${pdf.id})">×</button>
+                    </div>
+                `;
+            });
+        };
+    }
+    // --- END EDGE LOGIC ---
 
     function calculatePipsFromPrice() {
         const entry = parseFloat(document.getElementById('tEntry').value);
@@ -430,5 +549,4 @@ doctype html>
     updateStats(); renderTable(); syncRisk('pct');
 </script>
 </body>
-
-</html><!
+</html>
