@@ -8,7 +8,7 @@
 <style>
     :root {
         --color-bg-primary: #020917;
-        --color-bg-secondary: #020817;
+        --color-bg-secondary: #020815;
         --color-text-light: #e6eef8;
         --color-text-muted: #94a3b8;
         --color-accent: #f6a440; 
@@ -29,17 +29,7 @@
         --input-bg: #f8fafc;
     }
 
-    body {font-family: 'Segoe UI', Arial, sans-serif; 
-    margin: 0; 
-    /* This creates the dark overlay so you can still read your trade data */
-    background: linear-gradient(rgba(2, 9, 23, 0.85), rgba(2, 9, 23, 0.85)), 
-                url('https://raw.githubusercontent.com/litneek/neek-pro-journal/main/amg.jpg');
-    background-size: cover;
-    background-position: center;
-    background-attachment: fixed;
-    color: var(--color-text-light); 
-    transition: 0.3s; 
-}
+    body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; background: var(--color-bg-primary); color: var(--color-text-light); transition: 0.3s; }
     header { background: var(--color-bg-secondary); padding: 12px 24px; display: flex; align-items: center; position: sticky; top: 0; z-index: 100; border-bottom: 1px solid var(--color-border); }
     header h1 { margin: 0; font-size: 22px; color: var(--color-accent); font-weight: 800; }
     .header-actions { margin-left: auto; display: flex; gap: 10px; align-items: center; }
